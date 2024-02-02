@@ -149,8 +149,9 @@ class Trainer:
             for run_num in range(self.runs_per_seed):
                 run_dir = os.path.join(config_dir, str(seed) + "-run" + str(run_num) + "_" + self.timestamp())
                 os.makedirs(run_dir)
-                self.logger.info("Will train models for {} entities".format(self.ds_multi.num_entities))
+                #self.logger.info("Will train models for {} entities".format(self.ds_multi.num_entities))
 
+                '''
                 for entity in self.ds_multi.datasets:
                     entity_dir = os.path.join(run_dir, entity.name)
                     os.makedirs(entity_dir)
@@ -163,30 +164,41 @@ class Trainer:
                         algo.name, entity.name, self.ds_multi_name, config_name, str(seed), str(run_num)
                     ))
                     X_train, y_train, X_test, y_test = entity.data()
-                    
-                    try:
-                        algo.fit(X_train.copy())
-                        train_summary = [config_name, algo_config, algo.get_val_loss()]
-                        self.train_summary.append(train_summary)
-                        self.logger.info("config {} : {}, val loss {}".format(*train_summary))
-                    except Exception as e:
-                        self.logger.error(f"encountered exception {e} while training or saving loss")
-                        self.logger.error(traceback.format_exc())
-                        continue
+                '''
+                entity_dir = os.path.join(run_dir, self.ds_multi.name)
+                os.makedirs(entity_dir)
+                algo = self.algo_class(**algo_config)
+                algo.set_output_dir(entity_dir)
+                self.logger.info("Training algo {} on entity {} of me_dataset {} with config {}, algo seed {}, "
+                                 "run_num {}".format(
+                    algo.name, entity.name, self.ds_multi_name, config_name, str(seed), str(run_num)
+                ))
+                X_train, y_train, X_test, y_test = self.ds_multi.train, self.ds_multi.test_labels, self.ds_multi.test, self.ds_multi.test_labels 
+                print('X_train shape:', X_train.shape, y_train.shape, X_test.shape, y_test.shape)
+                
+                try:
+                    algo.fit(X_train.copy())
+                    train_summary = [config_name, algo_config, algo.get_val_loss()]
+                    self.train_summary.append(train_summary)
+                    self.logger.info("config {} : {}, val loss {}".format(*train_summary))
+                except Exception as e:
+                    self.logger.error(f"encountered exception {e} while training or saving loss")
+                    self.logger.error(traceback.format_exc())
+                    continue
 
-                    if algo.torch_save:
-                        try:
-                            save_torch_algo(algo, out_dir=entity_dir)
-                        except Exception as e:
-                            self.logger.error(f"encountered exception {e} while saving model")
-                            self.logger.error(traceback.format_exc())
+                if algo.torch_save:
                     try:
-                        self.predict(algo=algo, entity=entity, entity_dir=entity_dir, logger=self.logger)
-
+                        save_torch_algo(algo, out_dir=entity_dir)
                     except Exception as e:
-                        self.logger.error(f"encountered exception {e} while running predictions")
+                        self.logger.error(f"encountered exception {e} while saving model")
                         self.logger.error(traceback.format_exc())
-                        continue
+                try:
+                    self.predict(algo=algo, entity=entity, entity_dir=entity_dir, logger=self.logger)
+
+                except Exception as e:
+                    self.logger.error(f"encountered exception {e} while running predictions")
+                    self.logger.error(traceback.format_exc())
+                    continue
 
     def train_modified_configs(self, configs: dict):
         """

@@ -104,9 +104,23 @@ def run_quick_trial_all_algos(out_dir_root):
                     test_run=True)
 
 
+def run_my_trial(out_dir_root):
+    multi_seeds = [0]
+    # ds_to_run = ["msl", "smap","smd",]
+    ds_to_run = ["MSL"]
+    algos_to_run = ["AutoEncoder_recon_all", "VAE-LSTM","OmniAnoAlgo"]
+    run_multi_seeds(out_dir_root=out_dir_root,
+                    multi_seeds=multi_seeds,
+                    ds_to_run=ds_to_run,
+                    algos_to_run=algos_to_run,
+                    test_run=True)
+
+
+
 if __name__ == "__main__":
     out_dir_root = os.path.join(os.getcwd(), "reports", "trial")
-    run_quick_trial_all_algos(out_dir_root)
+    run_my_trial(out_dir_root)
+    # run_quick_trial_all_algos(out_dir_root)
     # run_quick_trial_5_ds(out_dir_root)
     # run_all_benchmarks(out_dir_root)
 

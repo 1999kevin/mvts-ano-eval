@@ -8,9 +8,9 @@ import umap
 import traceback
 
 from configs import default_thres_config, constant_std
-from src.algorithms.telem_anom.errors import Errors
+# from src.algorithms.telem_anom.errors import Errors
 
-from src.algorithms.telem_anom.channel import Channel
+# from src.algorithms.telem_anom.channel import Channel
 from src.datasets.skab import Skab
 
 from src.datasets.swat import Swat
@@ -20,8 +20,11 @@ from src.datasets.smap_entity import Smap_entity
 from src.datasets.msl_entity import Msl_entity
 from src.datasets.smd_entity import Smd_entity
 from src.datasets.dataset import get_events
+from src.datasets.all_data_loader import PSMSegLoader, MSLSegLoader, SMDSegLoader, SMAPSegLoader, SWATSegLoader, UCRSegLoader
 from src.algorithms.algorithm_utils import *
-from src.algorithms import UnivarAutoEncoder, AutoEncoder, LSTMED, VAE_LSTM, TcnED, TelemanomAlgo, RawSignalBaseline, \
+# from src.algorithms import UnivarAutoEncoder, AutoEncoder, LSTMED, VAE_LSTM, TcnED, TelemanomAlgo, RawSignalBaseline, \
+#     PcaRecons, MSCRED, OmniAnoAlgo, Ocsvm_gpu
+from src.algorithms import UnivarAutoEncoder, AutoEncoder, LSTMED, VAE_LSTM, TcnED, RawSignalBaseline, \
     PcaRecons, MSCRED, OmniAnoAlgo, Ocsvm_gpu
 from scipy import signal
 
@@ -35,15 +38,12 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plt
 
-datasets_dict = {"msl": Msl_entity,
-                 "smap": Smap_entity,
-                 "smd": Smd_entity,
-                 "damadics": Damadics,
-                 "wadi": Wadi,
-                 "swat": Swat,
-                 "swat-long": Swat,
-                 "damadics-s": Damadics,
-                 "skab": Skab
+datasets_dict = {"MSL": MSLSegLoader,
+                 "SMAP": SMAPSegLoader,
+                 "SMD": SMDSegLoader,
+                 "SWAT": SWATSegLoader,
+                 "PSM": PSMSegLoader,
+                 "UCR": UCRSegLoader,
                  }
 
 def get_chan_num(abs_filename):
@@ -62,7 +62,7 @@ def get_algo_class(algo_name):
              "PcaRecons": PcaRecons,
              "VAE-LSTM": VAE_LSTM,
              "TcnED": TcnED,
-             "TelemanomAlgo": TelemanomAlgo,
+            #  "TelemanomAlgo": TelemanomAlgo,
              "RawSignalBaseline": RawSignalBaseline,
              "MSCRED": MSCRED,
              "OmniAnoAlgo": OmniAnoAlgo,
