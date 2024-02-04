@@ -58,12 +58,12 @@ def evaluate(saved_model_root, logger, thres_methods=["top_k_time", "best_f1_tes
         entity = os.path.split(folder_name)[-1]
         if me_ds_name in ["msl", "smd", "smap"]:
             entity = entity.split("-", 1)[1]
-        ds_init_params = {"seed": seed, "entity": entity}
+        #ds_init_params = {"seed": seed, "entity": entity}
         if me_ds_name == "swat-long":
             ds_init_params["shorten_long"] = False
         if me_ds_name == "damadics-s":
             ds_init_params["drop_init_test"] = True
-        dataset = ds_class(**ds_init_params)
+        dataset = ds_class(root_path='/home/liuke/mengxuan/datasets/all_datasets/')
         plots_name = os.path.join(plots_dir, algo_name + "_" + me_ds_name + "_" + entity + "_")
         # ds_name = dataset.name
         logger.info("Processing Folder name: {}, {} on me dataset {}, entity {}".format(folder_name, algo_name,
@@ -84,7 +84,7 @@ def evaluate(saved_model_root, logger, thres_methods=["top_k_time", "best_f1_tes
             return None
 
         # Get the true labels
-        _, _, _, y_test = dataset.data()
+        _, _, _, y_test = dataset.data
 
         true_events = get_events(y_test)
 

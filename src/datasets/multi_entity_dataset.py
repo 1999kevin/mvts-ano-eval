@@ -28,5 +28,5 @@ class MultiEntityDataset_ori:
 class MultiEntityDataset:
     def __init__(self, dataset_class, seed: int=42, ds_kwargs: dict={}):
 
-        dataset = dataset_class(root_path='/home/liuke/mengxuan/datasets/all_datasets/')
-        return datasets
+        self.dataset = dataset_class(root_path='/home/liuke/mengxuan/datasets/all_datasets/')
+        #return dataset

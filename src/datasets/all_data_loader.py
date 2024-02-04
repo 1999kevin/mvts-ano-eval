@@ -5,12 +5,94 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 # from sktime.utils import load_data
-from ucr_anomaly_data_provider.data_loader import load_data
-from ucr_anomaly_data_provider.loader import Loader
+from ..ucr_anomaly_data_provider.data_loader import load_data
+from ..ucr_anomaly_data_provider.loader import Loader
 import warnings
 
 
 warnings.filterwarnings('ignore')
+
+def get_events(y_test, outlier=1, normal=0, breaks=[]):
+    events = dict()
+    label_prev = normal
+    event = 0  # corresponds to no event
+    event_start = 0
+    for tim, label in enumerate(y_test):
+        if label == outlier:
+            if label_prev == normal:
+                event += 1
+                event_start = tim
+            elif tim in breaks:
+                # A break point was hit, end current event and start new one
+                event_end = tim - 1
+                events[event] = (event_start, event_end)
+                event += 1
+                event_start = tim
+
+        else:
+            # event_by_time_true[tim] = 0
+            if label_prev == outlier:
+                event_end = tim - 1
+                events[event] = (event_start, event_end)
+        label_prev = label
+
+    if label_prev == outlier:
+        event_end = tim - 1
+        events[event] = (event_start, event_end)
+    return events
+
+def format_data(train_df, test_df, OUTLIER_CLASS=1, verbose=False):
+    print(train_df)
+    print(test_df)
+    train_only_cols = set(train_df.columns).difference(set(test_df.columns))
+    if verbose:
+        print("Columns {} present only in the training set, removing them")
+    train_df = train_df.drop(train_only_cols, axis=1)
+
+    test_only_cols = set(test_df.columns).difference(set(train_df.columns))
+    if verbose:
+        print("Columns {} present only in the test set, removing them")
+    test_df = test_df.drop(test_only_cols, axis=1)
+
+    train_anomalies = train_df[train_df["y"] == OUTLIER_CLASS]
+    test_anomalies: pd.DataFrame = test_df[test_df["y"] == OUTLIER_CLASS]
+    print("Total Number of anomalies in train set = {}".format(len(train_anomalies)))
+    print("Total Number of anomalies in test set = {}".format(len(test_anomalies)))
+    print("% of anomalies in the test set = {}".format(len(test_anomalies) / len(test_df) * 100))
+    print("number of anomalous events = {}".format(len(get_events(y_test=test_df["y"].values))))
+    # Remove the labels from the data
+    X_train = train_df.drop(["y"], axis=1)
+    y_train = train_df["y"]
+    X_test = test_df.drop(["y"], axis=1)
+    y_test = test_df["y"]
+    return X_train, y_train, X_test, y_test
+
+def standardize(X_train, X_test, remove=False, verbose=False, max_clip=5, min_clip=-4):
+    mini, maxi = X_train.min(), X_train.max()
+    for col in X_train.columns:
+        if maxi[col] != mini[col]:
+            X_train[col] = (X_train[col] - mini[col]) / (maxi[col] - mini[col])
+            X_test[col] = (X_test[col] - mini[col]) / (maxi[col] - mini[col])
+            X_test[col] = np.clip(X_test[col], a_min=min_clip, a_max=max_clip)
+        else:
+            assert X_train[col].nunique() == 1
+            if remove:
+                if verbose:
+                    print("Column {} has the same min and max value in train. Will remove this column".format(col))
+                X_train = X_train.drop(col, axis=1)
+                X_test = X_test.drop(col, axis=1)
+            else:
+                if verbose:
+                    print("Column {} has the same min and max value in train. Will scale to 1".format(col))
+                if mini[col] != 0:
+                    X_train[col] = X_train[col] / mini[col]  # Redundant operation, just for consistency
+                    X_test[col] = X_test[col] / mini[col]
+                if verbose:
+                    print("After transformation, train unique vals: {}, test unique vals: {}".format(
+                    X_train[col].unique(),
+                    X_test[col].unique()))
+    return X_train, X_test
+    
 
 class PSMSegLoader(Dataset):
     def __init__(self, root_path, win_size=100, step=1, flag="train"):
@@ -36,6 +118,26 @@ class PSMSegLoader(Dataset):
         print("train:", self.train.shape)
 
         self.name = 'PSM'
+
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
 
     def __len__(self):
         if self.flag == "train":
@@ -77,10 +179,31 @@ class MSLSegLoader(Dataset):
         self.train = data
         self.val = self.test
         self.test_labels = np.load(os.path.join(root_path, "MSL_test_label.npy"))
-        print("test:", self.test.shape)
+        print("test:", self.test.shape, ' test labels: ', self.test_labels.shape)
         print("train:", self.train.shape)
 
         self.name = 'MSL'
+
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
+
 
     def __len__(self):
         if self.flag == "train":
@@ -127,6 +250,26 @@ class SMAPSegLoader(Dataset):
 
         self.name = 'SMAP'
 
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
+
     def __len__(self):
 
         if self.flag == "train":
@@ -171,6 +314,26 @@ class SMDSegLoader(Dataset):
         self.test_labels = np.load(os.path.join(root_path, "SMD_test_label.npy"))
 
         self.name = 'SMD'
+
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
 
     def __len__(self):
         if self.flag == "train":
@@ -221,6 +384,26 @@ class SWATSegLoader(Dataset):
         self.test_labels = labels
         print("test:", self.test.shape)
         print("train:", self.train.shape)
+
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
 
     def __len__(self):
         """
@@ -278,6 +461,26 @@ class UCRSegLoader(Dataset):
 
         print("test:", self.test.shape)
         print("train:", self.train.shape)
+
+        train_df = pd.DataFrame(self.train)
+        print(self.test.shape)
+        test_df = pd.DataFrame(self.test)
+        print(test_df)
+
+        train_df["y"] = np.zeros(train_df.shape[0])
+        test_df["y"] = self.test_labels
+
+        X_train, y_train, X_test, y_test = format_data(train_df, test_df, 1, verbose=False)
+        X_train, X_test = standardize(X_train, X_test, remove=False, verbose=False)
+
+        self.data = tuple([X_train, y_train, X_test, y_test])
+        self.y_test = y_test
+
+    def get_anom_frac_entity(self):
+        if self.y_test is None:
+            self.load()
+        test_anom_frac_entity = (np.sum(self.y_test)) / len(self.y_test)
+        return test_anom_frac_entity
 
     def __len__(self):
         """

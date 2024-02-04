@@ -9,12 +9,12 @@ lr = 1e-3
 gpu = 0
 train_val_pc = 0.25
 pca_expl_var = 0.9
-n_dims = {"swat-long": 51, "swat": 51, "wadi": 123, "damadics": 32, "damadics-s": 32, "msl": 55, "smap": 25, "smd": 38,
-          "skab": 8}
-strides = {"swat-long": 10, "swat": 10, "wadi": 10, "damadics": 10, "damadics-s": 10, "msl": 1, "smap": 1, "smd": 1,
-           "skab": 1}
-seq_lens = {"swat-long": 100, "swat": 100, "wadi": 30, "damadics": 100, "damadics-s": 100, "msl": 100, "smap": 100,
-            "smd": 100, "skab": 100}
+n_dims = {"swat-long": 51, "SWAT": 51, "wadi": 123, "damadics": 32, "damadics-s": 32, "MSL": 55, "SMAP": 25, "SMD": 38,
+          "skab": 8, "PSM": 25, "UCR": 1}
+strides = {"swat-long": 10, "SWAT": 1, "wadi": 10, "damadics": 10, "damadics-s": 10, "MSL": 1, "SMAP": 1, "SMD": 100,
+           "skab": 1, "PSM": 1, "UCR": 1}
+seq_lens = {"swat-long": 100, "SWAT": 100, "wadi": 30, "damadics": 100, "damadics-s": 100, "MSL": 100, "SMAP": 100,
+            "SMD": 100, "skab": 100, "PSM": 100, "UCR": 100}
 datasets_config = {"swat-long": {"shorten_long": False}, "damadics-s": {"drop_init_test": True}}
 thres_methods = ["top_k_time",
                  "best_f1_test",
@@ -29,10 +29,10 @@ seed = 42
 constant_std = 0.000001
 
 # thresholding
-long_windows = {"swat-long": 100000, "swat": 100000, "wadi": 100000, "damadics": 100000, "msl": 2000, "smap": 2000,
-                "smd": 25000, "damadics-s": 100000, "skab": 100}
-kernel_sigmas = {"swat-long": 120, "swat": 120, "wadi": 120, "damadics": 5, "msl": 10, "smap": 10,
-                "smd": 1, "damadics-s": 5, "skab": 1}
+long_windows = {"swat-long": 100000, "SWAT": 2000, "wadi": 100000, "damadics": 100000, "MSL": 2000, "SMAP": 2000,
+                "SMD": 2000, "damadics-s": 100000, "skab": 100, "PSM": 2000, "UCR": 2000}
+kernel_sigmas = {"swat-long": 120, "SWAT": 10, "wadi": 120, "damadics": 5, "MSL": 10, "SMAP": 10,
+                "SMD": 10, "damadics-s": 5, "skab": 1, "PSM": 10, "UCR": 10}
 
 default_thres_config = {"top_k_time": {},
                         "best_f1_test": {"exact_pt_adj": True},

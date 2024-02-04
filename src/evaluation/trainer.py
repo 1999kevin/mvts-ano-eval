@@ -42,7 +42,7 @@ class Trainer:
         self.seeds = algo_seeds
         self.runs_per_seed = runs_per_seed
         self.ds_multi = MultiEntityDataset(dataset_class=ds_class, seed=ds_seed, ds_kwargs=ds_kwargs)
-        self.ds_multi_name = self.ds_multi.name
+        self.ds_multi_name = self.ds_multi.dataset.name
         self.algo_name = self.algo_class(**self.algo_config_base).name
         self.algo_dir = os.path.join(self.output_dir, self.ds_multi_name, self.algo_name)
         os.makedirs(self.algo_dir, exist_ok=True)
@@ -58,8 +58,8 @@ class Trainer:
         return time.strftime('%Y-%m-%d-%H%M%S')
 
     @staticmethod
-    def predict(algo, entity, entity_dir, logger):
-        X_train, _, X_test, _ = entity.data()
+    def predict(algo, X_train, X_test, entity_dir, logger):
+        #X_train, _, X_test, _ = entity.data()
         try:
             algo.batch_size = 4*algo.batch_size
         except:
@@ -165,15 +165,15 @@ class Trainer:
                     ))
                     X_train, y_train, X_test, y_test = entity.data()
                 '''
-                entity_dir = os.path.join(run_dir, self.ds_multi.name)
+                entity_dir = os.path.join(run_dir, self.ds_multi.dataset.name)
                 os.makedirs(entity_dir)
                 algo = self.algo_class(**algo_config)
                 algo.set_output_dir(entity_dir)
-                self.logger.info("Training algo {} on entity {} of me_dataset {} with config {}, algo seed {}, "
+                self.logger.info("Training algo {} of me_dataset {} with config {}, algo seed {}, "
                                  "run_num {}".format(
-                    algo.name, entity.name, self.ds_multi_name, config_name, str(seed), str(run_num)
+                    algo.name, self.ds_multi_name, config_name, str(seed), str(run_num)
                 ))
-                X_train, y_train, X_test, y_test = self.ds_multi.train, self.ds_multi.test_labels, self.ds_multi.test, self.ds_multi.test_labels 
+                X_train, y_train, X_test, y_test = self.ds_multi.dataset.data 
                 print('X_train shape:', X_train.shape, y_train.shape, X_test.shape, y_test.shape)
                 
                 try:
@@ -193,7 +193,7 @@ class Trainer:
                         self.logger.error(f"encountered exception {e} while saving model")
                         self.logger.error(traceback.format_exc())
                 try:
-                    self.predict(algo=algo, entity=entity, entity_dir=entity_dir, logger=self.logger)
+                    self.predict(algo=algo, X_train=X_train, X_test=X_test, entity_dir=entity_dir, logger=self.logger)
 
                 except Exception as e:
                     self.logger.error(f"encountered exception {e} while running predictions")
